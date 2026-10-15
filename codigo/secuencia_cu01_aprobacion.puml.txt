@@ -1,0 +1,56 @@
+@startuml
+autonumber
+
+skinparam noteBackgroundColor #FFF2CC
+skinparam noteBorderColor #D6B656
+skinparam sequenceParticipantBackgroundColor #F4F4FF
+skinparam sequenceParticipantBorderColor #A29BFE
+skinparam sequenceLifeLineBorderColor #A29BFE
+skinparam actorBorderColor #A29BFE
+skinparam actorBackgroundColor #FFFFFF
+
+title Secuencia 1 - Flujo principal CU-01 Aprobación de cotización (US-04)
+
+actor Coordinador
+
+box "Aplicación" #E8F5E9
+participant AprobarCotizacionHandler
+participant ContratoAppService
+end box
+
+box "Dominio" #E3F2FD
+participant Contrato
+end box
+
+box "Infraestructura" #FFF3E0
+participant "ContratoRepository\n(IContratoRepository)" as ContratoRepository
+participant "SqlUnitOfWork\n(IUnitOfWork)" as SqlUnitOfWork
+end box
+
+Coordinador -> AprobarCotizacionHandler : AprobarCotizacionCommand(contratoId, coordinadorId)
+note over AprobarCotizacionHandler : Etapa 6 - Command
+
+AprobarCotizacionHandler -> ContratoAppService : AprobarCotizacion(contratoId, coordinadorId)
+note over ContratoAppService : Etapa 4 - Service Layer (solo coordina)
+
+ContratoAppService -> SqlUnitOfWork : IniciarTransaccion()
+ContratoAppService -> ContratoRepository : ObtenerPorId(contratoId)
+ContratoRepository --> ContratoAppService : Contrato (Aggregate Root)
+
+ContratoAppService -> Contrato : AprobarCotizacion()
+note over Contrato
+  Etapa 3 - el dominio decide
+  valida estado "Pendiente"
+  calcula Anticipo Inicial (25%)
+  cambia estado a "Enviada"
+end note
+Contrato --> ContratoAppService : ok
+
+ContratoAppService -> ContratoRepository : Guardar(contrato)
+ContratoAppService -> SqlUnitOfWork : Commit()
+note over ContratoRepository, SqlUnitOfWork : Etapa 5 - Repository + Unit of Work
+
+ContratoAppService --> AprobarCotizacionHandler : CotizacionAprobadaDTO
+AprobarCotizacionHandler --> Coordinador : Propuesta "Enviada" y anticipo calculado
+
+@enduml

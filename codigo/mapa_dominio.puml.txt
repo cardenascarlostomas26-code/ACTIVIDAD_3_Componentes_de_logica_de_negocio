@@ -1,0 +1,31 @@
+@startuml
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+rectangle "Aggregate_Contrato" {
+    class Contrato <<Aggregate Root>>
+    class ContratoAdicional <<Entity>>
+    class Presupuesto <<Value Object>>
+    
+    Contrato *-- ContratoAdicional
+    Contrato *-- Presupuesto
+}
+
+class Evento <<Entity>>
+class Cliente <<Entity>>
+
+Contrato --> Evento : pertenece a
+Contrato --> Cliente : firmado por
+
+rectangle "Aggregate_Proveedor" {
+    class Proveedor <<Aggregate Root>>
+    class DatosContacto <<Value Object>>
+    class PeriodoConfirmacion <<Value Object>>
+    
+    Proveedor *-- DatosContacto
+    Proveedor *-- PeriodoConfirmacion
+}
+
+Evento --> Proveedor : asignado a
+
+@enduml

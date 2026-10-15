@@ -1,0 +1,67 @@
+@startuml
+autonumber
+
+skinparam noteBackgroundColor #FFF2CC
+skinparam noteBorderColor #D6B656
+skinparam sequenceParticipantBackgroundColor #F4F4FF
+skinparam sequenceParticipantBorderColor #A29BFE
+skinparam sequenceLifeLineBorderColor #A29BFE
+skinparam actorBorderColor #A29BFE
+skinparam actorBackgroundColor #FFFFFF
+
+title Secuencia 2 - Flujo con excepción CU-04 Bloqueo de presupuesto (US-11)
+
+actor Coordinador
+
+box "Aplicación" #E8F5E9
+participant AgregarServicioExtraHandler
+participant ContratoAppService
+end box
+
+box "Dominio" #E3F2FD
+participant Contrato
+participant Presupuesto
+end box
+
+box "Infraestructura" #FFF3E0
+participant "ContratoRepository\n(IContratoRepository)" as ContratoRepository
+participant "SqlUnitOfWork\n(IUnitOfWork)" as SqlUnitOfWork
+end box
+
+Coordinador -> AgregarServicioExtraHandler : AgregarServicioExtraCommand(contratoId, ServicioExtraDTO)
+note over AgregarServicioExtraHandler : Etapa 6 - Command
+
+AgregarServicioExtraHandler -> ContratoAppService : AgregarServicioExtra(contratoId, ServicioExtraDTO)
+note over ContratoAppService : Etapa 4 - Service Layer
+
+ContratoAppService -> SqlUnitOfWork : IniciarTransaccion()
+ContratoAppService -> ContratoRepository : ObtenerPorId(contratoId)
+ContratoRepository --> ContratoAppService : Contrato (Aggregate Root)
+
+ContratoAppService -> Contrato : AgregarServicio(ContratoAdicional)
+note over Contrato : Etapa 3 - invariante del Aggregate
+
+Contrato -> Presupuesto : Excede(CostoTotal + costo del servicio)
+Presupuesto --> Contrato : resultado
+
+alt No excede el Presupuesto
+    Contrato --> ContratoAppService : servicio agregado, CostoTotal actualizado
+    ContratoAppService -> ContratoRepository : Guardar(contrato)
+    ContratoAppService -> SqlUnitOfWork : Commit()
+    ContratoAppService --> AgregarServicioExtraHandler : CostoActualizadoDTO
+    AgregarServicioExtraHandler --> Coordinador : Costo actualizado
+    
+else Excede el Presupuesto (US-11)
+    Contrato -[#red]x ContratoAppService : PresupuestoExcedidoException
+    note over ContratoAppService
+      El dominio rechaza antes de tocar la base de datos
+    end note
+    
+    ContratoAppService -> SqlUnitOfWork : Rollback()
+    note over ContratoRepository, SqlUnitOfWork : Etapa 5 - no se invoca Guardar() y nada se confirma
+    
+    ContratoAppService --> AgregarServicioExtraHandler : error de negocio (límite financiero)
+    AgregarServicioExtraHandler --> Coordinador : Mensaje de límite excedido, Guardar deshabilitado
+end
+
+@enduml

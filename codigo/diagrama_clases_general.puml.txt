@@ -1,0 +1,195 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam roundcorner 5
+
+package "CAPA DE APLICACIÓN (Etapas 4 y 6)" #F4FAED {
+    class ConsultarContratoHandler <<Query Handler>> #D5E8D4 {
+        + Handle(query)
+    }
+    class ConsultarProveedoresHandler <<Query Handler>> #D5E8D4 {
+        + Handle(query)
+    }
+    class AgregarServicioExtraHandler <<Command Handler>> #D5E8D4 {
+        + Handle(cmd)
+    }
+    class AprobarCotizacionHandler <<Command Handler>> #D5E8D4 {
+        + Handle(cmd)
+    }
+
+    class ProveedorAppService <<Application Service>> #D5E8D4 {
+        + RegistrarCancelacion()
+    }
+    class ContratoAppService <<Application Service>> #D5E8D4 {
+        + AprobarCotizacion()
+        + AgregarServicioExtra()
+    }
+    class EventoAppService <<Application Service>> #D5E8D4 {
+        + SolicitarCambioNormal()
+    }
+    class AdminAppService <<Application Service>> #D5E8D4 {
+        + AplicarPenalizacion()
+    }
+
+    interface IContratoConsultas <<interface>> #D5E8D4 {
+        + ObtenerContrato()
+    }
+    interface IProveedorConsultas <<interface>> #D5E8D4 {
+        + ListarPorEvento()
+    }
+    interface IDomainEventDispatcher <<interface>> #D5E8D4 {
+        + Despachar(evento)
+    }
+    interface IUnitOfWork <<interface>> #D5E8D4 {
+        + IniciarTransaccion()
+        + Commit()
+        + Rollback()
+    }
+}
+
+package "CAPA DE DOMINIO (Etapas 3 y 5)" #F4F9FC {
+    interface IProveedorRepository <<interface>> #DAE8FC {
+        + ObtenerPorId()
+        + Guardar()
+    }
+    interface IEventoRepository <<interface>> #DAE8FC {
+        + ObtenerPorId()
+        + Guardar()
+    }
+    interface IContratoRepository <<interface>> #DAE8FC {
+        + ObtenerPorId()
+        + Guardar()
+    }
+    class PenalizacionDomainService <<Domain Service>> #DAE8FC {
+        + CalcularMulta()
+        + CancelarEnCascada()
+    }
+
+    class Evento <<Entity>> #DAE8FC {
+        eventoId
+        fechaEvento
+        estado
+        + SolicitarCambioNormal()
+    }
+    class Contrato <<Aggregate Root>> #DAE8FC {
+        contratoId
+        estado
+        anticipoInicial
+        + AprobarCotizacion()
+        + AgregarServicio()
+        + ValidarAnticipo()
+        + TieneSaldoVencido()
+        + CostoTotal()
+    }
+    class Cliente <<Entity>> #DAE8FC {
+        clienteId
+        nombre
+    }
+    class Proveedor <<Aggregate Root>> #DAE8FC {
+        proveedorId
+        estado
+        + CancelarParticipacion()
+        + ExpirarSiSinRespuesta()
+    }
+
+    class ContratoAdicional <<Entity>> #DAE8FC {
+        servicio
+        costo
+    }
+    class Presupuesto <<Value Object>> #DAE8FC {
+        monto
+        moneda
+        + Excede()
+    }
+    class ContratoPrincipal <<Entity>> #DAE8FC {
+        costoBase
+    }
+    class DatosContacto <<Value Object>> #DAE8FC {
+        telefono
+        correo
+    }
+    class PeriodoConfirmacion <<Value Object>> #DAE8FC {
+        dias
+    }
+
+    class CambioFueraDeTiempoException <<Exception>> #DAE8FC
+    class ContratoActivadoEvent <<Domain Event>> #DAE8FC
+    class PresupuestoExcedidoEvent <<Domain Event>> #DAE8FC
+    class PresupuestoExcedidoException <<Exception>> #DAE8FC
+    class ServiciosModificadosEvent <<Domain Event>> #DAE8FC
+    class ProveedorCanceladoEvent <<Domain Event>> #DAE8FC
+    class AdvertenciaGeneradaEvent <<Domain Event>> #DAE8FC
+
+    Contrato *-- "0..*" ContratoAdicional
+    Contrato *-- "1" Presupuesto
+    Contrato *-- "1" ContratoPrincipal
+    Contrato --> Evento : eventoId
+    Contrato --> Cliente : clienteId
+    Proveedor *-- "1" DatosContacto
+    Proveedor *-- "1" PeriodoConfirmacion
+
+    Contrato ..> ContratoActivadoEvent : emite
+    Contrato ..> PresupuestoExcedidoEvent : emite
+    Contrato ..> PresupuestoExcedidoException : lanza
+    ContratoAdicional ..> CambioFueraDeTiempoException : lanza
+    Evento ..> ServiciosModificadosEvent : emite
+    Proveedor ..> ProveedorCanceladoEvent : emite
+    Proveedor ..> AdvertenciaGeneradaEvent : emite
+}
+
+package "CAPA DE INFRAESTRUCTURA (Etapa 5)" #FFFBF4 {
+    class SqlUnitOfWork <<Unit of Work>> #FFE6CC {
+        + IniciarTransaccion()
+        + Commit()
+        + Rollback()
+    }
+    class ProveedorRepository <<Repository>> #FFE6CC {
+        + ObtenerPorId()
+        + Guardar()
+    }
+    class EventoRepository <<Repository>> #FFE6CC {
+        + ObtenerPorId()
+        + Guardar()
+    }
+    class ContratoRepository <<Repository>> #FFE6CC {
+        + ObtenerPorId()
+        + Guardar()
+    }
+    
+    class ContratoConsultas <<Read Model>> #FFE6CC {
+        + ObtenerContrato()
+    }
+    class ProveedorConsultas <<Read Model>> #FFE6CC {
+        + ListarPorEvento()
+    }
+    class DomainEventDispatcher <<Dispatcher>> #FFE6CC {
+        + Despachar()
+    }
+}
+
+' Implementaciones
+SqlUnitOfWork ..|> IUnitOfWork
+ProveedorRepository ..|> IProveedorRepository
+EventoRepository ..|> IEventoRepository
+ContratoRepository ..|> IContratoRepository
+ContratoConsultas ..|> IContratoConsultas
+ProveedorConsultas ..|> IProveedorConsultas
+DomainEventDispatcher ..|> IDomainEventDispatcher
+
+' Dependencias desde Aplicación
+ConsultarContratoHandler ..> IContratoConsultas
+ConsultarProveedoresHandler ..> IProveedorConsultas
+AgregarServicioExtraHandler --> ContratoAppService
+AprobarCotizacionHandler --> ContratoAppService
+
+ProveedorAppService ..> IProveedorConsultas
+ProveedorAppService ..> IDomainEventDispatcher
+ProveedorAppService ..> IUnitOfWork
+
+ContratoAppService ..> IDomainEventDispatcher
+ContratoAppService ..> IUnitOfWork
+
+EventoAppService ..> IUnitOfWork
+AdminAppService ..> IUnitOfWork
+
+@enduml
