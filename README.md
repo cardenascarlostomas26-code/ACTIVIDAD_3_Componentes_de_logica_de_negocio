@@ -1,2 +1,12 @@
-# ACTIVIDAD_3_Componentes_de_logica_de_negocio
-Repositorio de Github para la actividad #3 de la materia: Componentes de logica de negocio
+# Sistema de Arquitectura de Software - Eventos Nova
+
+Repositorio oficial del equipo para la Unidad 3: Diseño arquitectural del sistema con IA.
+
+## Contexto de la Empresa
+**Eventos Nova** es una organización dedicada a la planificación y ejecución de bodas, graduaciones y eventos empresariales. El sistema gestiona la cotización, contratación, coordinación de proveedores (salón, música, alimentos, etc.) y control de excepciones (cambios de última hora, cancelaciones y anticipos).
+
+## 📂 Estructura del Repositorio
+- `docs/`: Informes de arquitectura, Decisiones Arquitecturales (ADR) y la **Bitácora de IA**.
+- `diagrams/`: Diagramas de Dominio, Clases y Secuencia (con sus fuentes editables y exportaciones).
+- `src/`: Estructura modular del código base reflejando la separación de responsabilidades.
+- `tests/`: Casos de prueba seleccionados para flujos críticos.
